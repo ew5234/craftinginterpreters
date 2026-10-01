@@ -17,6 +17,9 @@ public class GenerateAst {
     defineAst(outputDir, "Expr", Arrays.asList(
 //> Statements and State assign-expr
       "Assign   : Token name, Expr value",
+
+      "Ternary  : Expr condition, Expr thenBranch, Expr elseBranch",
+
 //< Statements and State assign-expr
       "Binary   : Expr left, Token operator, Expr right",
 //> Functions call-expr
