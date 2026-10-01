@@ -18,6 +18,7 @@ class Parser {
 //< parse-error
   private final List<Token> tokens;
   private int current = 0;
+  private int loopDepth = 0;
 
   Parser(List<Token> tokens) {
     this.tokens = tokens;
@@ -59,7 +60,12 @@ class Parser {
 //< expression
 
   private Expr comma() {
-
+    if (match(COMMA)) {
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      assignment();
+      return new Expr.Literal(null);
+    }
 
     Expr expr = assignment();
 
@@ -121,6 +127,7 @@ class Parser {
 //< Classes parse-class-declaration
 //> Statements and State parse-statement
   private Stmt statement() {
+    if (match(BREAK)) return breakStatement();
 //> Control Flow match-for
     if (match(FOR)) return forStatement();
 //< Control Flow match-for
@@ -141,6 +148,16 @@ class Parser {
     return expressionStatement();
   }
 //< Statements and State parse-statement
+
+private Stmt breakStatement() {
+  Token keyword = previous();
+  if (loopDepth == 0 ) {
+    error(keyword, "'break' cannot be used outside of a loop.");
+  }
+  consume(SEMICOLON, "Expect ';' after 'break'.");
+  return new Stmt.Break(keyword);
+}
+
 //> Control Flow for-statement
   private Stmt forStatement() {
     consume(LEFT_PAREN, "Expect '(' after 'for'.");
@@ -175,7 +192,15 @@ class Parser {
     consume(RIGHT_PAREN, "Expect ')' after for clauses.");
 //< for-increment
 //> for-body
-    Stmt body = statement();
+    //Stmt body = statement();
+    loopDepth++;
+
+    Stmt body;
+    try {
+      body = statement();
+    } finally {
+      loopDepth++;
+    }
 
 //> for-desugar-increment
     if (increment != null) {
@@ -253,6 +278,9 @@ class Parser {
     consume(LEFT_PAREN, "Expect '(' after 'while'.");
     Expr condition = expression();
     consume(RIGHT_PAREN, "Expect ')' after condition.");
+
+    loopDepth++;
+
     Stmt body = statement();
 
     return new Stmt.While(condition, body);
@@ -260,7 +288,12 @@ class Parser {
 //< Control Flow while-statement
 //> Statements and State parse-expression-statement
   private Stmt expressionStatement() {
+    
     Expr expr = expression();
+    if (isAtEnd()){
+      return new Stmt.Print(expr);
+    }
+    
     consume(SEMICOLON, "Expect ';' after expression.");
     return new Stmt.Expression(expr);
   }
@@ -601,7 +634,7 @@ private Expr conditional() {
   }
 //< advance
 //> utils
-  private boolean isAtEnd() {
+  boolean isAtEnd() {
     return peek().type == EOF;
   }
 

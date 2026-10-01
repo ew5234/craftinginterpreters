@@ -223,7 +223,7 @@ class Interpreter implements Expr.Visitor<Object>,
 //> Statements and State visit-var
   @Override
   public Void visitVarStmt(Stmt.Var stmt) {
-    Object value = null;
+    Object value = Environment.UNINITIALIZED; //null;
     if (stmt.initializer != null) {
       value = evaluate(stmt.initializer);
     }
@@ -235,8 +235,12 @@ class Interpreter implements Expr.Visitor<Object>,
 //> Control Flow visit-while
   @Override
   public Void visitWhileStmt(Stmt.While stmt) {
-    while (isTruthy(evaluate(stmt.condition))) {
-      execute(stmt.body);
+    try {
+      while (isTruthy(evaluate(stmt.condition))) {
+        execute(stmt.body);
+      }
+    } catch (Break breakExeption) {
+
     }
     return null;
   }
@@ -491,11 +495,19 @@ class Interpreter implements Expr.Visitor<Object>,
 //> Statements and State visit-variable
   @Override
   public Object visitVariableExpr(Expr.Variable expr) {
+    Object value = lookUpVariable(expr.name, expr);
+    
+    if (value == Environment.UNINITIALIZED) {
+        throw new RuntimeError(expr.name, 
+            "The variable '" + expr.name.lexeme + "' must be initialized before use.");
+    }
+    
+    return value;
 /* Statements and State visit-variable < Resolving and Binding call-look-up-variable
     return environment.get(expr.name);
 */
 //> Resolving and Binding call-look-up-variable
-    return lookUpVariable(expr.name, expr);
+    //return lookUpVariable(expr.name, expr);
 //< Resolving and Binding call-look-up-variable
   }
 //> Resolving and Binding look-up-variable
@@ -553,4 +565,9 @@ class Interpreter implements Expr.Visitor<Object>,
     return object.toString();
   }
 //< stringify
+
+  @Override
+  public Void visitBreakStmt(Stmt.Break stmt) {
+    throw new Break();
+  }
 }

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 class Environment {
+  public static final Object UNINITIALIZED = new Object();
 //> enclosing-field
   final Environment enclosing;
 //< enclosing-field
@@ -88,4 +89,5 @@ class Environment {
     return result;
   }
 //< omit
+
 }
