@@ -85,7 +85,11 @@ class Parser {
       if (match(CLASS)) return classDeclaration();
 //< Classes match-class
 //> Functions match-fun
-      if (match(FUN)) return function("function");
+      //if (match(FUN)) return function("function");
+      if(check(FUN) && checkNext(IDENTIFIER)) {
+        consume(FUN, null);
+        return function("function");
+      }
 //< Functions match-fun
       if (match(VAR)) return varDeclaration();
 
@@ -299,7 +303,7 @@ private Stmt breakStatement() {
   }
 //< Statements and State parse-expression-statement
 //> Functions parse-function
-  private Stmt.Function function(String kind) {
+  /*private Stmt.Function function(String kind) {
     Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
 //> parse-parameters
     consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
@@ -322,6 +326,30 @@ private Stmt breakStatement() {
     List<Stmt> body = block();
     return new Stmt.Function(name, parameters, body);
 //< parse-body
+  }*/
+
+  private Stmt.Function function(String kind) {
+    Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
+    return new Stmt.Function(name, functionBody(kind));
+  }
+
+  private Expr.Function functionBody(String kind){
+    consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+    List<Token> parameters = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (parameters.size() >= 8) {
+          error(peek(), "Can't have more than 8 parameters");
+        }
+
+        parameters.add(consume(IDENTIFIER, "Expect paramter name."));
+      } while (match(COMMA));
+    }
+    consume(RIGHT_PAREN, "Expect ')' before " + kind + "body.");
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + "body.");
+    List<Stmt> body = block();
+    return new Expr.Function(parameters, body);
   }
 //< Functions parse-function
 //> Statements and State block
@@ -595,7 +623,7 @@ private Expr conditional() {
       return new Expr.Grouping(expr);
     }
 
-
+    if (match(FUN)) return functionBody("function");
 
 //> primary-error
     throw error(peek(), "Expect expression.");
@@ -627,6 +655,13 @@ private Expr conditional() {
     return peek().type == type;
   }
 //< check
+
+  private boolean checkNext(TokenType tokenType) {
+    if(isAtEnd()) return false;
+    if(tokens.get(current + 1).type == EOF) return false;
+    return tokens.get(current + 1).type == tokenType;
+  }
+
 //> advance
   private Token advance() {
     if (!isAtEnd()) current++;

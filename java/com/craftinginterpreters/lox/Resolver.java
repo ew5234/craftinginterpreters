@@ -119,7 +119,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
       }
 
 //< resolver-initializer-type
-      resolveFunction(method, declaration); // [local]
+      resolveFunction(method.function, declaration); // [local]
     }
 
 //> resolver-end-this-scope
@@ -154,7 +154,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     resolveFunction(stmt);
 */
 //> pass-function-type
-    resolveFunction(stmt, FunctionType.FUNCTION);
+    resolveFunction(stmt.function, FunctionType.FUNCTION);
 //< pass-function-type
     return null;
   }
@@ -344,6 +344,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     return null;
   }
 //< visit-variable-expr
+
+  @Override
+  public Void visitFunctionExpr(Expr.Function function){
+    resolveFunction(function, FunctionType.FUNCTION);
+    return null;
+  }
+
 //> resolve-stmt
   private void resolve(Stmt stmt) {
     stmt.accept(this);
@@ -360,13 +367,13 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 */
 //> set-current-function
   private void resolveFunction(
-      Stmt.Function function, FunctionType type) {
+      Expr.Function function, FunctionType type) {
     FunctionType enclosingFunction = currentFunction;
     currentFunction = type;
 
 //< set-current-function
     beginScope();
-    for (Token param : function.params) {
+    for (Token param : function.parameters) {
       declare(param);
       define(param);
     }
