@@ -47,8 +47,10 @@ public class GenerateAst {
 */
 //> Statements and State var-expr
       "Unary    : Token operator, Expr right",
-      "Variable : Token name"
+      "Variable : Token name",
 //< Statements and State var-expr
+
+      "Function : List<Token> parameters, List<Stmt> body"
     ));
 //> Statements and State stmt-ast
 
@@ -68,8 +70,8 @@ public class GenerateAst {
 //< Inheritance superclass-ast
       "Expression : Expr expression",
 //> Functions function-ast
-      "Function   : Token name, List<Token> params," +
-                  " List<Stmt> body",
+      "Function   : Token name, Expr.Function function",// Token name, List<Token> params," +
+                  //" List<Stmt> body",
 //< Functions function-ast
 //> Control Flow if-ast
       "If         : Expr condition, Stmt thenBranch," +
