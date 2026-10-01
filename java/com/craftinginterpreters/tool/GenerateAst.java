@@ -56,6 +56,9 @@ public class GenerateAst {
 //> block-ast
       "Block      : List<Stmt> statements",
 //< block-ast
+
+      "Break      : Token keyword",
+
 /* Classes class-ast < Inheritance superclass-ast
       "Class      : Token name, List<Stmt.Function> methods",
 */
