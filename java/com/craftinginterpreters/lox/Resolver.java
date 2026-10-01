@@ -220,6 +220,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     return null;
   }
 //< visit-assign-expr
+
+  @Override
+  public Void visitTernaryExpr(Expr.Ternary expr) {
+    resolve(expr.condition);
+    resolve(expr.thenBranch);
+    resolve(expr.elseBranch);
+
+    return null;
+  }
+
 //> visit-binary-expr
   @Override
   public Void visitBinaryExpr(Expr.Binary expr) {

@@ -52,10 +52,26 @@ class Parser {
     return equality();
 */
 //> Statements and State expression
-    return assignment();
+    //return assignment();
 //< Statements and State expression
+  return comma();
   }
 //< expression
+
+  private Expr comma() {
+
+
+    Expr expr = assignment();
+
+    while (match(COMMA)) {
+      Token operator = previous();
+      Expr right = assignment();
+      expr = new Expr.Binary(expr, operator, right);
+    }
+
+    return expr;
+  }
+
 //> Statements and State declaration
   private Stmt declaration() {
     try {
@@ -293,7 +309,7 @@ class Parser {
     Expr expr = equality();
 */
 //> Control Flow or-in-assignment
-    Expr expr = or();
+    Expr expr = conditional();
 //< Control Flow or-in-assignment
 
     if (match(EQUAL)) {
@@ -316,8 +332,32 @@ class Parser {
     return expr;
   }
 //< Statements and State parse-assignment
+
+private Expr conditional() {
+  Expr expr = or();
+
+  if (match(QUESTION)) {
+    Expr thenBranch = expression();
+
+    consume(COLON, "Expect ':' after then branch.");
+
+    Expr elseBranch = conditional();
+
+    return new Expr.Ternary(expr, thenBranch, elseBranch);
+  }
+
+  return expr;
+}
+
 //> Control Flow or
   private Expr or() {
+    if (match(OR)) {
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      and();
+      return new Expr.Literal(null);
+    }
+
     Expr expr = and();
 
     while (match(OR)) {
@@ -331,6 +371,13 @@ class Parser {
 //< Control Flow or
 //> Control Flow and
   private Expr and() {
+    if (match(AND)){
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      equality();
+      return new Expr.Literal(null);
+    }
+
     Expr expr = equality();
 
     while (match(AND)) {
@@ -344,6 +391,13 @@ class Parser {
 //< Control Flow and
 //> equality
   private Expr equality() {
+    if (match(BANG_EQUAL, EQUAL_EQUAL)) {
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      comparison();
+      return new Expr.Literal(null);
+    }
+
     Expr expr = comparison();
 
     while (match(BANG_EQUAL, EQUAL_EQUAL)) {
@@ -357,6 +411,13 @@ class Parser {
 //< equality
 //> comparison
   private Expr comparison() {
+    if (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      term();
+      return new Expr.Literal(null);
+    }
+
     Expr expr = term();
 
     while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
@@ -370,6 +431,13 @@ class Parser {
 //< comparison
 //> term
   private Expr term() {
+    if (match(MINUS, PLUS)) {
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      factor();
+      return new Expr.Literal(null);
+    }
+
     Expr expr = factor();
 
     while (match(MINUS, PLUS)) {
@@ -383,6 +451,13 @@ class Parser {
 //< term
 //> factor
   private Expr factor() {
+    if (match(SLASH, STAR)) {
+      Token operator = previous();
+      error(operator, "Missing left-hand operand.");
+      unary();
+      return new Expr.Literal(null);
+    }
+
     Expr expr = unary();
 
     while (match(SLASH, STAR)) {
@@ -420,7 +495,7 @@ class Parser {
           error(peek(), "Can't have more than 255 arguments.");
         }
 //< check-max-arity
-        arguments.add(expression());
+        arguments.add(assignment()); // expression());
       } while (match(COMMA));
     }
 
@@ -470,8 +545,8 @@ class Parser {
       return new Expr.Super(keyword, method);
     }
 //< Inheritance parse-super
-//> Classes parse-this
 
+//> Classes parse-this
     if (match(THIS)) return new Expr.This(previous());
 //< Classes parse-this
 //> Statements and State parse-identifier
@@ -486,8 +561,10 @@ class Parser {
       consume(RIGHT_PAREN, "Expect ')' after expression.");
       return new Expr.Grouping(expr);
     }
-//> primary-error
 
+
+
+//> primary-error
     throw error(peek(), "Expect expression.");
 //< primary-error
   }

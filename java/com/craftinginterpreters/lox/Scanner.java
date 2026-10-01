@@ -63,6 +63,8 @@ class Scanner {
       case ')': addToken(RIGHT_PAREN); break;
       case '{': addToken(LEFT_BRACE); break;
       case '}': addToken(RIGHT_BRACE); break;
+      case '?': addToken(QUESTION); break;
+      case ':': addToken(COLON); break;
       case ',': addToken(COMMA); break;
       case '.': addToken(DOT); break;
       case '-': addToken(MINUS); break;
@@ -88,6 +90,25 @@ class Scanner {
         if (match('/')) {
           // A comment goes until the end of the line.
           while (peek() != '\n' && !isAtEnd()) advance();
+        } else if (match('*')){
+          // Block comment.
+          while (!isAtEnd()) {
+            if (peek() == '*' && peekNext() == '/') {
+              advance(); // *
+              advance(); // /
+              break;
+            }
+
+            if (peek() == '\n') {
+              line++;
+            }
+
+            advance();
+          }
+
+          if (isAtEnd()) {
+            Lox.error(line, "Unterminated block comment.");
+          }
         } else {
           addToken(SLASH);
         }
