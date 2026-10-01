@@ -1,0 +1,4 @@
+print "statement";
+print 1+0;
+print "expression";
+1 + 1
