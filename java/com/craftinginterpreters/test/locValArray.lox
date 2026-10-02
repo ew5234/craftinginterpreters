@@ -1,0 +1,22 @@
+var global = "global";
+
+fun outer() {
+  var a = "A";
+  var b = "B";
+  var c = "C";
+
+  fun inner() {
+    print a;
+    print b;
+    print c;
+
+    b = "B inner";
+
+    print b;
+    print global;
+  }
+
+  inner();
+}
+
+outer();
