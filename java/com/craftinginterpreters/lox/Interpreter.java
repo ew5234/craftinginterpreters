@@ -30,6 +30,7 @@ class Interpreter implements Expr.Visitor<Object>,
 //< Functions global-environment
 //> Resolving and Binding locals-field
   private final Map<Expr, Integer> locals = new HashMap<>();
+  private final Map<Expr, Integer> localSlots = new HashMap<>();
 //< Resolving and Binding locals-field
 //> Statements and State environment-field
 
@@ -84,8 +85,9 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 //< Statements and State execute
 //> Resolving and Binding resolve
-  void resolve(Expr expr, int depth) {
+  void resolve(Expr expr, int depth, int slot) {
     locals.put(expr, depth);
+    localSlots.put(expr, slot);
   }
 //< Resolving and Binding resolve
 //> Statements and State execute-block
@@ -129,7 +131,7 @@ class Interpreter implements Expr.Visitor<Object>,
 
     if (stmt.superclass != null) {
       environment = new Environment(environment);
-      environment.define("super", superclass);
+      environment.defineSlot(superclass);
     }
 //< Inheritance begin-superclass-environment
 //> interpret-methods
@@ -192,11 +194,16 @@ class Interpreter implements Expr.Visitor<Object>,
     environment.define(stmt.name.lexeme, function);
     return null;
   */
-    String fnName = stmt.name.lexeme;
-    environment.define(fnName, new LoxFunction(fnName, stmt.function, environment, false));
-    return null;
-  }
-
+    LoxFunction function =
+      new LoxFunction(stmt.name.lexeme, stmt.function, environment, false);
+    if (environment == globals) {
+      environment.define(stmt.name.lexeme, function);
+    } else {
+      environment.defineSlot(function);
+    }
+  
+  return null;
+}
   @Override
   public Object visitFunctionExpr(Expr.Function expr) {
     return new LoxFunction(null, expr, environment, false);
@@ -233,12 +240,18 @@ class Interpreter implements Expr.Visitor<Object>,
 //> Statements and State visit-var
   @Override
   public Void visitVarStmt(Stmt.Var stmt) {
-    Object value = Environment.UNINITIALIZED; //null;
+    Object value = Environment.UNINITIALIZED;
+
     if (stmt.initializer != null) {
       value = evaluate(stmt.initializer);
     }
 
-    environment.define(stmt.name.lexeme, value);
+    if (environment == globals) {
+      environment.define(stmt.name.lexeme, value);
+    } else {
+      environment.defineSlot(value);
+    }
+
     return null;
   }
 //< Statements and State visit-var
@@ -266,7 +279,7 @@ class Interpreter implements Expr.Visitor<Object>,
 
     Integer distance = locals.get(expr);
     if (distance != null) {
-      environment.assignAt(distance, expr.name, value);
+      environment.assignAt(distance, localSlots.get(expr), value);
     } else {
       globals.assign(expr.name, value);
     }
@@ -454,11 +467,11 @@ class Interpreter implements Expr.Visitor<Object>,
   public Object visitSuperExpr(Expr.Super expr) {
     int distance = locals.get(expr);
     LoxClass superclass = (LoxClass)environment.getAt(
-        distance, "super");
+        distance, 0);
 //> super-find-this
 
     LoxInstance object = (LoxInstance)environment.getAt(
-        distance - 1, "this");
+        distance - 1, 0);
 //< super-find-this
 //> super-find-method
 
@@ -523,8 +536,9 @@ class Interpreter implements Expr.Visitor<Object>,
 //> Resolving and Binding look-up-variable
   private Object lookUpVariable(Token name, Expr expr) {
     Integer distance = locals.get(expr);
+
     if (distance != null) {
-      return environment.getAt(distance, name.lexeme);
+      return environment.getAt(distance, localSlots.get(expr));
     } else {
       return globals.get(name);
     }

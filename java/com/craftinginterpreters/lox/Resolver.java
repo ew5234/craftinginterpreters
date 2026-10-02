@@ -102,7 +102,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     if (stmt.superclass != null) {
       beginScope();
       scopes.peek().put("super",
-        new Variable(null, VariableState.DEFINED));
+        new Variable(null, scopes.peek().size(), VariableState.DEFINED));
     }
 //< Inheritance begin-super-scope
 //> resolve-methods
@@ -110,7 +110,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //> resolver-begin-this-scope
     beginScope();
     scopes.peek().put("this",
-      new Variable(null, VariableState.DEFINED));
+      new Variable(null, scopes.peek().size(), VariableState.DEFINED));
 
 //< resolver-begin-this-scope
     for (Stmt.Function method : stmt.methods) {
@@ -407,15 +407,16 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     if (scopes.isEmpty()) return;
 
     Map<String, Variable> scope = scopes.peek();
-//> duplicate-variable
+
     if (scope.containsKey(name.lexeme)) {
       Lox.error(name,
           "Already variable with this name in this scope.");
     }
 
-//< duplicate-variable
-    scope.put(name.lexeme, new Variable(name, VariableState.DECLARED));
+    int slot = scope.size();
 
+    scope.put(name.lexeme,
+        new Variable(name, slot, VariableState.DECLARED));
   }
 //< declare
 //> define
@@ -427,12 +428,21 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //> resolve-local
   private void resolveLocal(Expr expr, Token name, boolean isRead) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
-      if (scopes.get(i).containsKey(name.lexeme)) {
-        interpreter.resolve(expr, scopes.size() - 1 - i);
+      Map<String, Variable> scope = scopes.get(i);
+
+      if (scope.containsKey(name.lexeme)) {
+        Variable variable = scope.get(name.lexeme);
+
+        interpreter.resolve(
+            expr,
+            scopes.size() - 1 - i,
+            variable.slot
+        );
 
         if (isRead) {
-          scopes.get(i).get(name.lexeme).state = VariableState.READ;
+          variable.state = VariableState.READ;
         }
+
         return;
       }
     }
@@ -441,10 +451,12 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private static class Variable {
     final Token name;
+    final int slot;
     VariableState state;
 
-    private Variable(Token name, VariableState state) {
+    private Variable(Token name, int slot, VariableState state) {
       this.name = name;
+      this.slot = slot;
       this.state = state;
     }
   }
