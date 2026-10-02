@@ -70,14 +70,14 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     StringBuilder builder = new StringBuilder();
     builder.append("(fun " + stmt.name.lexeme + "(");
 
-    for (Token param : stmt.params) {
-      if (param != stmt.params.get(0)) builder.append(" ");
+    for (Token param : stmt.function.parameters) {
+      if (param != stmt.function.parameters.get(0)) builder.append(" ");
       builder.append(param.lexeme);
     }
 
     builder.append(") ");
 
-    for (Stmt body : stmt.body) {
+    for (Stmt body : stmt.function.body) {
       builder.append(body.accept(this));
     }
 
@@ -85,6 +85,12 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     return builder.toString();
   }
 //< Functions omit
+
+  @Override
+  public String visitFunctionExpr(Expr.Function function) {
+      return "function";
+  }
+
 //> Control Flow omit
 
   @Override
@@ -143,6 +149,16 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     return parenthesize(expr.operator.lexeme,
                         expr.left, expr.right);
   }
+
+  @Override
+  public String visitTernaryExpr(Expr.Ternary expr) {
+    return parenthesize(
+        "?:",
+        expr.condition,
+        expr.thenBranch,
+        expr.elseBranch);
+  }
+
 //> Functions omit
 
   @Override
@@ -209,6 +225,12 @@ class AstPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     return expr.name.lexeme;
   }
 //< Statements and State omit
+
+  @Override
+  public String visitBreakStmt(Stmt.Break stmt) {
+    return "break";
+  }
+
 //< visit-methods
 //> print-utilities
   private String parenthesize(String name, Expr... exprs) {
