@@ -3,6 +3,7 @@ package com.craftinginterpreters.lox;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
 
 class LoxInstance {
   private final LoxClass klass;
@@ -15,22 +16,25 @@ class LoxInstance {
   }
 
 //> lox-instance-get-property
-  Object get(Token name) {
+  Object get(Token name, Interpreter interpreter) {
     if (fields.containsKey(name.lexeme)) {
       return fields.get(name.lexeme);
     }
 
-//> lox-instance-get-method
     LoxFunction method = klass.findMethod(name.lexeme);
-/* Classes lox-instance-get-method < Classes lox-instance-bind-method
-    if (method != null) return method;
-*/
-//> lox-instance-bind-method
-    if (method != null) return method.bind(this);
-//< lox-instance-bind-method
 
-//< lox-instance-get-method
-    throw new RuntimeError(name, // [hidden]
+    if (method != null) {
+      LoxFunction bound = method.bind(this);
+
+      if (method.isGetter()) {
+        return bound.call(interpreter, new ArrayList<>());
+      }
+
+      return bound;
+    }
+
+    throw new RuntimeError(
+        name,
         "Undefined property '" + name.lexeme + "'.");
   }
 //< lox-instance-get-property

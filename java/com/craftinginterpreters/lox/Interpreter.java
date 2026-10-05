@@ -384,12 +384,13 @@ class Interpreter implements Expr.Visitor<Object>,
   @Override
   public Object visitGetExpr(Expr.Get expr) {
     Object object = evaluate(expr.object);
+
     if (object instanceof LoxInstance) {
-      return ((LoxInstance) object).get(expr.name);
+      return ((LoxInstance) object).get(expr.name, this);
     }
 
-    throw new RuntimeError(expr.name,
-        "Only instances have properties.");
+    throw new RuntimeError(
+        expr.name, "Only instances have properties.");
   }
 //< Classes interpreter-visit-get
 //> visit-grouping
@@ -565,4 +566,6 @@ class Interpreter implements Expr.Visitor<Object>,
   public Void visitBreakStmt(Stmt.Break stmt) {
     throw new Break();
   }
+
+  
 }

@@ -373,20 +373,24 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //> set-current-function
   private void resolveFunction(
       Expr.Function function, FunctionType type) {
+
     FunctionType enclosingFunction = currentFunction;
     currentFunction = type;
 
-//< set-current-function
     beginScope();
-    for (Token param : function.parameters) {
-      declare(param);
-      define(param);
+
+    if (function.parameters != null) {
+      for (Token param : function.parameters) {
+        declare(param);
+        define(param);
+      }
     }
+
     resolve(function.body);
+
     endScope();
-//> restore-current-function
+
     currentFunction = enclosingFunction;
-//< restore-current-function
   }
 //< resolve-function
 //> begin-scope

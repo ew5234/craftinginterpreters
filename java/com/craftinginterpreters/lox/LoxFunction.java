@@ -65,8 +65,10 @@ class LoxFunction implements LoxCallable {
 //> call-closure
     Environment environment = new Environment(closure);
 //< call-closure
-    for (int i = 0; i < declaration.parameters.size(); i++) {
-      environment.defineSlot(arguments.get(i));
+    if (declaration.parameters != null) {
+      for (int i = 0; i < declaration.parameters.size(); i++) {
+        environment.defineSlot(arguments.get(i));
+      }
     }
 
 /* Functions function-call < Functions catch-return
@@ -90,4 +92,8 @@ class LoxFunction implements LoxCallable {
     return null;
   }
 //< function-call
+
+  public boolean isGetter() {
+    return declaration.parameters == null;
+  }
 }

@@ -334,25 +334,51 @@ private Stmt breakStatement() {
 
   private Stmt.Function function(String kind) {
     Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
-    return new Stmt.Function(name, functionBody(kind));
+
+    List<Token> parameters = null;
+
+    // Allow omitting the parameter list entirely in method getters.
+    if (!kind.equals("method") || check(LEFT_PAREN)) {
+      consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+      parameters = new ArrayList<>();
+      if (!check(RIGHT_PAREN)) {
+        do {
+          if (parameters.size() >= 255) {
+            error(peek(), "Can't have more than 255 parameters.");
+          }
+
+          parameters.add(consume(IDENTIFIER, "Expect parameter name."));
+        } while (match(COMMA));
+      }
+      consume(RIGHT_PAREN, "Expect ')' after parameters.");
+    }
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    List<Stmt> body = block();
+    Expr.Function function = new Expr.Function(parameters, body);
+    return new Stmt.Function(name, function);
   }
 
-  private Expr.Function functionBody(String kind){
+  private Expr.Function functionBody(String kind) {
     consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+
     List<Token> parameters = new ArrayList<>();
     if (!check(RIGHT_PAREN)) {
       do {
-        if (parameters.size() >= 8) {
-          error(peek(), "Can't have more than 8 parameters");
+        if (parameters.size() >= 255) {
+          error(peek(), "Can't have more than 255 parameters.");
         }
 
-        parameters.add(consume(IDENTIFIER, "Expect paramter name."));
+        parameters.add(
+            consume(IDENTIFIER, "Expect parameter name."));
       } while (match(COMMA));
     }
-    consume(RIGHT_PAREN, "Expect ')' before " + kind + "body.");
 
-    consume(LEFT_BRACE, "Expect '{' before " + kind + "body.");
+    consume(RIGHT_PAREN, "Expect ')' after parameters.");
+
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
     List<Stmt> body = block();
+
     return new Expr.Function(parameters, body);
   }
 //< Functions parse-function
