@@ -127,6 +127,9 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 //> resolver-end-this-scope
     endScope();
 
+    for (Stmt.Function method : stmt.classMethods) {
+        resolveFunction(method.function, FunctionType.METHOD);
+      }
 //< resolver-end-this-scope
 //< resolve-methods
 //> Inheritance end-super-scope
@@ -396,8 +399,15 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     Map<String, Variable> scope = scopes.pop();
 
     for (Map.Entry<String, Variable> entry : scope.entrySet()) {
-      if (entry.getValue().state == VariableState.DEFINED) {
-        Lox.error(entry.getValue().name, "Local variable is not used.");
+      Variable variable = entry.getValue();
+
+      // "this" and "super" don't have a Token.
+      if (variable.name == null) {
+        continue;
+      }
+
+      if (variable.state == VariableState.DEFINED) {
+        Lox.error(variable.name, "Local variable is not used.");
       }
     }
   }

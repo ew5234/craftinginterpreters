@@ -6,6 +6,7 @@ import java.util.List;
 abstract class Stmt {
   interface Visitor<R> {
     R visitBlockStmt(Block stmt);
+    R visitBreakStmt(Break stmt);
     R visitClassStmt(Class stmt);
     R visitExpressionStmt(Expression stmt);
     R visitFunctionStmt(Function stmt);
@@ -31,14 +32,30 @@ abstract class Stmt {
     final List<Stmt> statements;
   }
 //< stmt-block
+//> stmt-break
+  static class Break extends Stmt {
+    Break(Token keyword) {
+      this.keyword = keyword;
+    }
+
+    @Override
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitBreakStmt(this);
+    }
+
+    final Token keyword;
+  }
+//< stmt-break
 //> stmt-class
   static class Class extends Stmt {
     Class(Token name,
           Expr.Variable superclass,
-          List<Stmt.Function> methods) {
+          List<Stmt.Function> methods,
+          List<Stmt.Function> classMethods) {
       this.name = name;
       this.superclass = superclass;
       this.methods = methods;
+      this.classMethods = classMethods;
     }
 
     @Override
@@ -49,6 +66,7 @@ abstract class Stmt {
     final Token name;
     final Expr.Variable superclass;
     final List<Stmt.Function> methods;
+    final List<Stmt.Function> classMethods;
   }
 //< stmt-class
 //> stmt-expression
@@ -67,10 +85,9 @@ abstract class Stmt {
 //< stmt-expression
 //> stmt-function
   static class Function extends Stmt {
-    Function(Token name, List<Token> params, List<Stmt> body) {
+    Function(Token name, Expr.Function function) {
       this.name = name;
-      this.params = params;
-      this.body = body;
+      this.function = function;
     }
 
     @Override
@@ -79,8 +96,7 @@ abstract class Stmt {
     }
 
     final Token name;
-    final List<Token> params;
-    final List<Stmt> body;
+    final Expr.Function function;
   }
 //< stmt-function
 //> stmt-if
