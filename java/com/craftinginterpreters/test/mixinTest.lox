@@ -1,0 +1,26 @@
+class A {
+  printThis() {
+    print "A Last";
+  }
+  printA() {
+    print "A";
+  }
+}
+
+class B {
+  printThis() {
+    print "B Last";
+  }
+  printB() {
+    print "B";
+  }
+}
+
+class C with A, B {
+}
+
+var c = C();
+
+c.printA();
+c.printB();
+c.printThis(); //class B takes precedence since it was the last class added
