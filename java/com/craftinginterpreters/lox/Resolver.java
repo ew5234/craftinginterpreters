@@ -120,6 +120,10 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         declaration = FunctionType.INITIALIZER;
       }
 
+    for (Expr.Variable mixin : stmt.mixins) {
+      resolve(mixin);
+    }
+
 //< resolver-initializer-type
       resolveFunction(method.function, declaration); // [local]
     }

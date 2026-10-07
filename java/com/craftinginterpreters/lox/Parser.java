@@ -110,6 +110,14 @@ class Parser {
       superclass = new Expr.Variable(previous());
     }
 
+    List<Expr.Variable> mixins = new ArrayList<>();
+    if (match(WITH)) {
+      do {
+        consume(IDENTIFIER, "Expect mixin name.");
+        mixins.add(new Expr.Variable(previous()));
+      } while (match(COMMA));
+    }
+
     consume(LEFT_BRACE, "Expect '{' before class body.");
 
     List<Stmt.Function> methods = new ArrayList<>();
@@ -129,7 +137,8 @@ class Parser {
         name,
         superclass,
         methods,
-        classMethods
+        classMethods,
+        mixins
     );
   }
 //< Classes parse-class-declaration
@@ -356,7 +365,7 @@ private Stmt breakStatement() {
     consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
     List<Stmt> body = block();
     Expr.Function function = new Expr.Function(parameters, body);
-    return new Stmt.Function(name, function);
+    return new Stmt.Function(name, function, false);
   }
 
   private Expr.Function functionBody(String kind) {

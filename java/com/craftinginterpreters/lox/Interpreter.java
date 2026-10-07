@@ -119,7 +119,29 @@ class Interpreter implements Expr.Visitor<Object>,
 
     LoxClass superclass = null;
     if (stmt.superclass != null) {
-      superclass = (LoxClass)evaluate(stmt.superclass);
+      Object value = evaluate(stmt.superclass);
+
+      if(!(value instanceof LoxClass)) {
+        throw new RuntimeError(
+          stmt.superclass.name, "Superclass must be a class."
+        );
+      }
+      superclass = (LoxClass)value;
+    }
+
+    Map<String, LoxFunction> methods = new HashMap<>();
+
+    for (Expr.Variable mixinExpr : stmt.mixins) {
+      Object value = evaluate(mixinExpr);
+
+      if(!(value instanceof LoxClass)) {
+        throw new RuntimeError(
+          mixinExpr.name, "Mixin must be a class."
+        );
+      }
+      LoxClass mixin = (LoxClass)value;
+
+      methods.putAll(mixin.getMethods());
     }
 
     Map<String, LoxFunction> classMethods = new HashMap<>();
@@ -130,13 +152,12 @@ class Interpreter implements Expr.Visitor<Object>,
 
     LoxClass metaclass = new LoxClass(stmt.name.lexeme + " metaclass", null, null, classMethods);
 
-    Map<String, LoxFunction> methods = new HashMap<>();
     for (Stmt.Function method : stmt.methods) {
       LoxFunction function = new LoxFunction(method.name.lexeme, method.function, environment, method.name.lexeme.equals("init"));
       methods.put(method.name.lexeme, function);
     }
 
-    LoxClass klass = new LoxClass(stmt.name.lexeme, metaclass, null, methods);
+    LoxClass klass = new LoxClass(stmt.name.lexeme, metaclass, superclass, methods);
     environment.assign(stmt.name, klass);
     return null;
   }

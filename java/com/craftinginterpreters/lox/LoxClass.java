@@ -83,4 +83,8 @@ class LoxClass extends LoxInstance implements LoxCallable {
 //< lox-initializer-arity
   }
 //< lox-class-call-arity
+
+  Map<String, LoxFunction> getMethods() {
+    return methods;
+  }
 }
