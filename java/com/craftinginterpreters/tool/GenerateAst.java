@@ -67,11 +67,12 @@ public class GenerateAst {
 //> Inheritance superclass-ast
       "Class      : Token name, Expr.Variable superclass," +
                   " List<Stmt.Function> methods," +
-                  " List<Stmt.Function> classMethods",
+                  " List<Stmt.Function> classMethods," + 
+                  " List<Expr.Variable> mixins",
 //< Inheritance superclass-ast
       "Expression : Expr expression",
 //> Functions function-ast
-      "Function   : Token name, Expr.Function function",// Token name, List<Token> params," +
+      "Function   : Token name, Expr.Function function, boolean isGetter",// Token name, List<Token> params," +
                   //" List<Stmt> body",
 //< Functions function-ast
 //> Control Flow if-ast
