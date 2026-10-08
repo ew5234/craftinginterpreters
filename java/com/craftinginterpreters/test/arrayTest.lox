@@ -1,0 +1,10 @@
+var array = Array(3);
+
+// "length" returns the number of elements.
+print array.length; // "3".
+
+// "set" sets the element at the given index to the given value.
+array.set(1, "new");
+
+// "get" returns the element at a given index.
+print array.get(1); // "new".
