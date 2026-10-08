@@ -47,4 +47,8 @@ class LoxInstance {
   public String toString() {
     return klass.name + " instance";
   }
+
+  LoxClass getKlass() {
+    return klass;
+  }
 }

@@ -637,12 +637,11 @@ private Expr conditional() {
     }
 //> Inheritance parse-super
 
-    if (match(SUPER)) {
+    if (match(INNER)) {
       Token keyword = previous();
-      consume(DOT, "Expect '.' after 'super'.");
-      Token method = consume(IDENTIFIER,
-          "Expect superclass method name.");
-      return new Expr.Super(keyword, method);
+      consume(LEFT_PAREN, "Expect '(' after 'inner'.");
+      consume(RIGHT_PAREN, "Expect ')' after 'inner'.");
+      return new Expr.Inner(keyword);
     }
 //< Inheritance parse-super
 

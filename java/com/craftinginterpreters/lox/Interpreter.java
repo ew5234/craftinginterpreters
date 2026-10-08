@@ -31,6 +31,7 @@ class Interpreter implements Expr.Visitor<Object>,
 //> Resolving and Binding locals-field
   private final Map<Expr, Integer> locals = new HashMap<>();
   private final Map<Expr, Integer> localSlots = new HashMap<>();
+  LoxFunction currentFunction = null;
 //< Resolving and Binding locals-field
 //> Statements and State environment-field
 
@@ -43,8 +44,9 @@ class Interpreter implements Expr.Visitor<Object>,
 
       @Override
       public Object call(Interpreter interpreter,
-                         List<Object> arguments) {
-        return (double)System.currentTimeMillis() / 1000.0;
+                        List<Object> arguments) {
+        
+        return null;
       }
 
       @Override
@@ -158,6 +160,10 @@ class Interpreter implements Expr.Visitor<Object>,
     }
 
     LoxClass klass = new LoxClass(stmt.name.lexeme, metaclass, superclass, methods);
+
+    for (Stmt.Function method : stmt.methods) {
+      methods.get(method.name.lexeme).setDeclaringClass(klass);
+    }
     environment.assign(stmt.name, klass);
     return null;
   }
@@ -476,9 +482,41 @@ class Interpreter implements Expr.Visitor<Object>,
           "Undefined property '" + expr.method.lexeme + "'.");
     }
 
+
 //< super-no-method
     return method.bind(object);
 //< super-find-method
+  }
+
+  @Override
+  public Object visitInnerExpr(Expr.Inner expr) {
+    if (currentFunction == null) {
+      return null;
+    }
+
+    LoxInstance instance = currentFunction.getBoundInstance();
+
+    if (instance == null) {
+      return null;
+    }
+
+    LoxClass declaringClass = currentFunction.getDeclaringClass();
+
+    if (declaringClass == null) {
+      return null;
+    }
+
+    LoxFunction method = instance.getKlass().findInnerMethod(
+        currentFunction.getName(),
+        declaringClass
+    );
+
+    if (method == null) {
+      return null;
+    }
+
+    method.bind(instance).call(this, new ArrayList<>());
+    return null;
   }
 //< Inheritance interpreter-visit-super
 //> Classes interpreter-visit-this

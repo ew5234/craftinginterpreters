@@ -3,6 +3,7 @@ package com.craftinginterpreters.lox;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 /* Classes lox-class < Classes lox-class-callable
 class LoxClass {
@@ -38,16 +39,15 @@ class LoxClass extends LoxInstance implements LoxCallable {
 //< lox-class-methods
 //> lox-class-find-method
   LoxFunction findMethod(String name) {
+    if(superclass != null) {
+      LoxFunction method = superclass.findMethod(name);
+      if (method != null) {
+        return method;
+      }
+    }
     if (methods.containsKey(name)) {
       return methods.get(name);
     }
-
-//> Inheritance find-method-recurse-superclass
-    if (superclass != null) {
-      return superclass.findMethod(name);
-    }
-
-//< Inheritance find-method-recurse-superclass
     return null;
   }
 //< lox-class-find-method
@@ -86,5 +86,36 @@ class LoxClass extends LoxInstance implements LoxCallable {
 
   Map<String, LoxFunction> getMethods() {
     return methods;
+  }
+
+  LoxFunction findInnerMethod(String name, LoxClass declaringClass) {
+    if (this == declaringClass) {
+      return null;
+    }
+
+    List<LoxClass> chain = new ArrayList<>();
+
+    LoxClass current = this;
+
+    while (current != null && current != declaringClass) {
+      chain.add(current);
+      current = current.superclass;
+    }
+
+    if (current != declaringClass) {
+      return null;
+    }
+
+    for (int i = chain.size() - 1; i >= 0; i--) {
+      LoxClass klass = chain.get(i);
+
+      LoxFunction method = klass.methods.get(name);
+
+      if (method != null) {
+        return method;
+      }
+    }
+
+    return null;
   }
 }

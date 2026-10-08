@@ -18,28 +18,37 @@ class LoxFunction implements LoxCallable {
 */
 //> Classes is-initializer-field
   private final boolean isInitializer;
+  private LoxClass declaringClass;
+  private final LoxInstance boundInstance;
   LoxFunction(String name, Expr.Function declaration, Environment closure,
-              boolean isInitializer) {
+            boolean isInitializer) {
+    this(name, declaration, closure, isInitializer, null);
+  }
+
+  private LoxFunction(String name, Expr.Function declaration, Environment closure,
+                      boolean isInitializer, LoxInstance boundInstance) {
     this.name = name;
     this.isInitializer = isInitializer;
-//< Classes is-initializer-field
-//> closure-constructor
     this.closure = closure;
-//< closure-constructor
     this.declaration = declaration;
+    this.boundInstance = boundInstance;
   }
 
 //> Classes bind-instance
   LoxFunction bind(LoxInstance instance) {
     Environment environment = new Environment(closure);
     environment.defineSlot(instance);
-/* Classes bind-instance < Classes lox-function-bind-with-initializer
-    return new LoxFunction(declaration, environment);
-*/
-//> lox-function-bind-with-initializer
-    return new LoxFunction(name, declaration, environment,
-                           isInitializer);
-//< lox-function-bind-with-initializer
+
+    LoxFunction function = new LoxFunction(
+        name,
+        declaration,
+        environment,
+        isInitializer,
+        instance
+    );
+
+    function.declaringClass = declaringClass;
+    return function;
   }
 //< Classes bind-instance
 //> function-to-string
@@ -58,42 +67,49 @@ class LoxFunction implements LoxCallable {
 //> function-call
   @Override
   public Object call(Interpreter interpreter,
-                     List<Object> arguments) {
-/* Functions function-call < Functions call-closure
-    Environment environment = new Environment(interpreter.globals);
-*/
-//> call-closure
+                    List<Object> arguments) {
     Environment environment = new Environment(closure);
-//< call-closure
+
     if (declaration.parameters != null) {
       for (int i = 0; i < declaration.parameters.size(); i++) {
         environment.defineSlot(arguments.get(i));
       }
     }
 
-/* Functions function-call < Functions catch-return
-    interpreter.executeBlock(declaration.body, environment);
-*/
-//> catch-return
+    LoxFunction previousFunction = interpreter.currentFunction;
+    interpreter.currentFunction = this;
+
     try {
       interpreter.executeBlock(declaration.body, environment);
     } catch (Return returnValue) {
-//> Classes early-return-this
       if (isInitializer) return closure.getAt(0, 0);
-
-//< Classes early-return-this
       return returnValue.value;
+    } finally {
+      interpreter.currentFunction = previousFunction;
     }
-//< catch-return
-//> Classes return-this
 
     if (isInitializer) return closure.getAt(0, 0);
-//< Classes return-this
     return null;
   }
 //< function-call
 
   public boolean isGetter() {
     return declaration.parameters == null;
+  }
+
+  void setDeclaringClass(LoxClass klass) {
+    this.declaringClass = klass;
+  }
+
+  LoxClass getDeclaringClass(){
+    return declaringClass;
+  }
+
+  LoxInstance getBoundInstance() {
+    return boundInstance;
+  }
+
+  String getName() {
+    return name;
   }
 }
