@@ -39,6 +39,7 @@ public class GenerateAst {
 //> Inheritance super-expr
       "Super    : Token keyword, Token method",
 //< Inheritance super-expr
+      "Inner    : Token keyword",
 //> Classes this-ast
       "This     : Token keyword",
 //< Classes this-ast
