@@ -13,6 +13,8 @@ void initChunk(Chunk* chunk) {
   chunk->count = 0;
   chunk->capacity = 0;
   chunk->code = NULL;
+  chunk->lineCount = 0;
+  chunk->lineCapacity = 0;
 //> chunk-null-lines
   chunk->lines = NULL;
 //< chunk-null-lines
@@ -30,6 +32,7 @@ void freeChunk(Chunk* chunk) {
   freeValueArray(&chunk->constants);
 //< chunk-free-constants
   initChunk(chunk);
+  FREE_ARRAY(LineStart, chunk->lines, chunk->lineCapacity);
 }
 //< free-chunk
 /* Chunks of Bytecode write-chunk < Chunks of Bytecode write-chunk-with-line
@@ -44,17 +47,24 @@ void writeChunk(Chunk* chunk, uint8_t byte, int line) {
     chunk->capacity = GROW_CAPACITY(oldCapacity);
     chunk->code = GROW_ARRAY(uint8_t, chunk->code,
         oldCapacity, chunk->capacity);
-//> write-chunk-line
-    chunk->lines = GROW_ARRAY(int, chunk->lines,
-        oldCapacity, chunk->capacity);
-//< write-chunk-line
   }
 
   chunk->code[chunk->count] = byte;
-//> chunk-write-line
-  chunk->lines[chunk->count] = line;
-//< chunk-write-line
   chunk->count++;
+
+  if (chunk->lineCount > 0 && chunk->lines[chunk->lineCount -1].line == line) {
+    return;
+  }
+
+  if (chunk->lineCapacity < chunk->lineCount +1) {
+    int oldCapacity = chunk->lineCapacity;
+    chunk ->lineCapacity = GROW_CAPACITY(oldCapacity);
+    chunk->lines = GROW_ARRAY(LineStart, chunk->lines, oldCapacity, chunk->lineCapacity); 
+  }
+
+  LineStart* lineStart = &chunk->lines[chunk->lineCount++];
+  lineStart->offset = chunk->count -1;
+  lineStart->line = line;
 }
 //< write-chunk
 //> add-constant
@@ -69,3 +79,21 @@ int addConstant(Chunk* chunk, Value value) {
   return chunk->constants.count - 1;
 }
 //< add-constant
+
+int getLine(Chunk* chunk, int instruction) {
+  int start = 0;
+  int end = chunk->lineCount -1;
+
+  for (;;) {
+    int mid = (start + end)/2;
+    LineStart* line = &chunk->lines[mid];
+    if (instruction < line->offset) {
+      end = mid -1;
+    } else if (mid == chunk->lineCount -1 || instruction < chunk->lines[mid+1].offset) {
+      return line->line;
+    }else {
+      start = mid +1;
+    }
+  }
+
+}
