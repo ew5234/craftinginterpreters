@@ -4,6 +4,7 @@
 //< Types of Values include-stdarg
 //> vm-include-stdio
 #include <stdio.h>
+#include <stdint.h>
 //> Strings vm-include-string
 #include <string.h>
 //< Strings vm-include-string
@@ -420,7 +421,11 @@ static InterpretResult run() {
 #define READ_CONSTANT() \
     (frame->closure->function->chunk.constants.values[READ_BYTE()])
 //< Closures read-constant
-
+#define READ_CONSTANT_LONG() \
+  (vm.frames[vm.frameCount - 1].closure->function->chunk.constants.values[ \
+      (uint32_t)READ_BYTE() | \
+      ((uint32_t)READ_BYTE() << 8) | \
+      ((uint32_t)READ_BYTE() << 16)])
 //< Calls and Functions run
 //> Global Variables read-string
 #define READ_STRING() AS_STRING(READ_CONSTANT())
@@ -488,6 +493,10 @@ static InterpretResult run() {
         break;
       }
 //< op-constant
+      case OP_CONSTANT_LONG: {
+        push(READ_CONSTANT_LONG());
+        break;
+      }
 //> Types of Values interpret-literals
       case OP_NIL: push(NIL_VAL); break;
       case OP_TRUE: push(BOOL_VAL(true)); break;

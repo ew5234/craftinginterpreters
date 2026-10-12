@@ -28,6 +28,13 @@ static int constantInstruction(const char* name, Chunk* chunk,
 //< return-after-operand
 }
 //< constant-instruction
+static int longConstantInstruction(const char* name, Chunk* chunk, int offset) {
+  uint32_t constant = chunk->code[offset+1] | (chunk->code[offset+2] << 8) | (chunk->code[offset+3] << 16);
+  printf("%-16s %4d '", name, constant);
+  printValue(chunk->constants.values[constant]);
+  printf("'\n");
+  return offset + 4;
+}
 //> Methods and Initializers invoke-instruction
 static int invokeInstruction(const char* name, Chunk* chunk,
                                 int offset) {
@@ -81,6 +88,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
     case OP_CONSTANT:
       return constantInstruction("OP_CONSTANT", chunk, offset);
 //< disassemble-constant
+    case OP_CONSTANT_LONG:
+      return longConstantInstruction("OP_CONSTANT_LONG", chunk, offset);
 //> Types of Values disassemble-literals
     case OP_NIL:
       return simpleInstruction("OP_NIL", offset);

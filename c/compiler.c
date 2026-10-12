@@ -274,7 +274,8 @@ static uint8_t makeConstant(Value value) {
 //< Compiling Expressions make-constant
 //> Compiling Expressions emit-constant
 static void emitConstant(Value value) {
-  emitBytes(OP_CONSTANT, makeConstant(value));
+  writeConstant(currentChunk(), value, parser.previous.line);
+  //limited to 256 emitBytes(OP_CONSTANT, makeConstant(value));
 }
 //< Compiling Expressions emit-constant
 //> Jumping Back and Forth patch-jump
