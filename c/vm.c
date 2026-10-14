@@ -691,7 +691,7 @@ static InterpretResult run() {
           runtimeError("Operand must be a number.");
           return INTERPRET_RUNTIME_ERROR;
         }
-        push(NUMBER_VAL(-AS_NUMBER(pop())));
+        vm.stackTop[-1] = -vm.stackTop[-1];
         break;
 //< Types of Values op-negate
 //> Global Variables interpret-print
