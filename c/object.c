@@ -112,23 +112,18 @@ static ObjString* allocateString(char* chars, int length) {
 static ObjString* allocateString(char* chars, int length,
                                  uint32_t hash) {
 //< Hash Tables allocate-string
-  ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
+  ObjString* string = (ObjString*)allocateObject(sizeof(ObjString) + sizeof(char) * (length + 1), OBJ_STRING);
   string->length = length;
-  string->chars = chars;
 //> Hash Tables allocate-store-hash
   string->hash = hash;
 //< Hash Tables allocate-store-hash
 //> Hash Tables allocate-store-string
 //> Garbage Collection push-string
 
-  push(OBJ_VAL(string));
-//< Garbage Collection push-string
-  tableSet(&vm.strings, string, NIL_VAL);
-//> Garbage Collection pop-string
-  pop();
+  memcpy(string->chars, chars, length);
+  string->chars[length] = '\0';
 
-//< Garbage Collection pop-string
-//< Hash Tables allocate-store-string
+  tableSet(&vm.strings, string, NIL_VAL);
   return string;
 }
 //< allocate-string
@@ -142,6 +137,14 @@ static uint32_t hashString(const char* key, int length) {
   return hash;
 }
 //< Hash Tables hash-string
+ObjString* makeString(int length) {
+  ObjString* string = (ObjString*)allocateObject(
+    sizeof(ObjString) + length + 1, OBJ_STRING);
+  string->length = length;
+  return string;
+}
+
+
 //> take-string
 ObjString* takeString(char* chars, int length) {
 /* Strings take-string < Hash Tables take-string-hash
@@ -149,38 +152,43 @@ ObjString* takeString(char* chars, int length) {
 */
 //> Hash Tables take-string-hash
   uint32_t hash = hashString(chars, length);
-//> take-string-intern
-  ObjString* interned = tableFindString(&vm.strings, chars, length,
-                                        hash);
+
+  ObjString* interned = tableFindString(
+      &vm.strings, chars, length, hash);
+
   if (interned != NULL) {
     FREE_ARRAY(char, chars, length + 1);
     return interned;
   }
 
-//< take-string-intern
-  return allocateString(chars, length, hash);
-//< Hash Tables take-string-hash
+  ObjString* string = allocateString(chars, length, hash);
+  FREE_ARRAY(char, chars, length + 1);
+  return string;
 }
 //< take-string
 ObjString* copyString(const char* chars, int length) {
-//> Hash Tables copy-string-hash
   uint32_t hash = hashString(chars, length);
-//> copy-string-intern
-  ObjString* interned = tableFindString(&vm.strings, chars, length,
-                                        hash);
+
+  ObjString* interned = tableFindString(
+      &vm.strings, chars, length, hash);
+
   if (interned != NULL) return interned;
 
-//< copy-string-intern
-//< Hash Tables copy-string-hash
-  char* heapChars = ALLOCATE(char, length + 1);
-  memcpy(heapChars, chars, length);
-  heapChars[length] = '\0';
-/* Strings object-c < Hash Tables copy-string-allocate
-  return allocateString(heapChars, length);
-*/
-//> Hash Tables copy-string-allocate
-  return allocateString(heapChars, length, hash);
-//< Hash Tables copy-string-allocate
+  return allocateString((char*)chars, length, hash);
+}
+
+static void concatenate() {
+  ObjString* b = AS_STRING(pop());
+  ObjString* a = AS_STRING(pop());
+
+  int length = a->length + b->length;
+  char* chars = ALLOCATE(char, length + 1);
+  memcpy(chars, a->chars, a->length);
+  memcpy(chars + a->length, b->chars, b->length);
+  chars[length] = '\0';
+
+  ObjString* result = takeString(chars, length);
+  push(OBJ_VAL(result));
 }
 //> Closures new-upvalue
 ObjUpvalue* newUpvalue(Value* slot) {
