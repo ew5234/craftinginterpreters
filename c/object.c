@@ -112,16 +112,12 @@ static ObjString* allocateString(char* chars, int length) {
 static ObjString* allocateString(char* chars, int length,
                                  uint32_t hash) {
 //< Hash Tables allocate-string
-  ObjString* string = (ObjString*)allocateObject(sizeof(ObjString) + sizeof(char) * (length + 1), OBJ_STRING);
-  string->length = length;
-//> Hash Tables allocate-store-hash
-  string->hash = hash;
-//< Hash Tables allocate-store-hash
-//> Hash Tables allocate-store-string
-//> Garbage Collection push-string
+  ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
 
-  memcpy(string->chars, chars, length);
-  string->chars[length] = '\0';
+  string->length = length;
+  string->hash = hash;
+  string->chars = chars;
+  string->ownsChars = true;
 
   tableSet(&vm.strings, string, NIL_VAL);
   return string;
@@ -161,9 +157,7 @@ ObjString* takeString(char* chars, int length) {
     return interned;
   }
 
-  ObjString* string = allocateString(chars, length, hash);
-  FREE_ARRAY(char, chars, length + 1);
-  return string;
+  return allocateString(chars, length, hash);
 }
 //< take-string
 ObjString* copyString(const char* chars, int length) {
@@ -174,7 +168,11 @@ ObjString* copyString(const char* chars, int length) {
 
   if (interned != NULL) return interned;
 
-  return allocateString((char*)chars, length, hash);
+  char* heapChars = ALLOCATE(char, length + 1);
+  memcpy(heapChars, chars, length);
+  heapChars[length] = '\0';
+
+  return allocateString(heapChars, length, hash);
 }
 
 static void concatenate() {
@@ -190,6 +188,25 @@ static void concatenate() {
   ObjString* result = takeString(chars, length);
   push(OBJ_VAL(result));
 }
+
+ObjString* constantString(const char* chars, int length) {
+  uint32_t hash = hashString(chars, length);
+
+  ObjString* interned = tableFindString(
+      &vm.strings, chars, length, hash);
+
+  if (interned != NULL) return interned;
+
+  ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
+  string->length = length;
+  string->hash = hash;
+  string->chars = (char*)chars;
+  string->ownsChars = false;
+
+  tableSet(&vm.strings, string, NIL_VAL);
+  return string;
+}
+
 //> Closures new-upvalue
 ObjUpvalue* newUpvalue(Value* slot) {
   ObjUpvalue* upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
