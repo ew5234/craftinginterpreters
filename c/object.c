@@ -119,7 +119,7 @@ static ObjString* allocateString(char* chars, int length,
   string->chars = chars;
   string->ownsChars = true;
 
-  tableSet(&vm.strings, string, NIL_VAL);
+  tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
   return string;
 }
 //< allocate-string
@@ -203,7 +203,7 @@ ObjString* constantString(const char* chars, int length) {
   string->chars = (char*)chars;
   string->ownsChars = false;
 
-  tableSet(&vm.strings, string, NIL_VAL);
+  tableSet(&vm.strings, OBJ_VAL(string), NIL_VAL);
   return string;
 }
 

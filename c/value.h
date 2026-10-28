@@ -101,9 +101,11 @@ typedef enum {
   VAL_NIL, // [user-types]
   VAL_NUMBER,
 //> Strings val-obj
-  VAL_OBJ
+  VAL_OBJ,
 //< Strings val-obj
+  VAL_EMPTY
 } ValueType;
+
 
 //< Types of Values value-type
 /* Chunks of Bytecode value-h < Types of Values value

@@ -1,0 +1,8 @@
+var intTest = 10;
+print intTest;
+
+var boolTest = true;
+print boolTest;
+
+var nilTest = nil;
+print nilTest;
