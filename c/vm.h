@@ -56,6 +56,10 @@ typedef struct {
 //< vm-stack
 //> Global Variables vm-globals
   Table globals;
+  Value* globalValues;
+  bool* globalDefined;
+  int globalCount;
+  int globalCapacity;
 //< Global Variables vm-globals
 //> Hash Tables vm-strings
   Table strings;
@@ -106,4 +110,5 @@ void push(Value value);
 Value pop();
 //< push-pop
 
+int getGlobalSlot(const char* name, int length);
 #endif

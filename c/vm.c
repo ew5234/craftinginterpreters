@@ -95,6 +95,44 @@ static void defineNative(const char* name, NativeFn function) {
 }
 //< Calls and Functions define-native
 
+int getGlobalSlot(const char* name, int length){
+  ObjString* key = copyString(name, length);
+
+  Value slotValue;
+
+  if (tableGet(&vm.globals, key, &slotValue)) {
+    int slot = (int)AS_NUMBER(slotValue);
+    printf("Reusing global '%.*s' at slot %d\n",
+         length, name, slot);
+    return slot;
+  }
+
+  if (vm.globalCount == UINT8_COUNT) {
+    return -1;
+  }
+
+  if (vm.globalCount + 1 > vm.globalCapacity) {
+    int oldCapacity = vm.globalCapacity;
+    vm.globalCapacity = GROW_CAPACITY(oldCapacity);
+
+    vm.globalValues = GROW_ARRAY(Value, vm.globalValues, oldCapacity, vm.globalCapacity);
+
+    vm.globalDefined = GROW_ARRAY(bool, vm.globalDefined, oldCapacity, vm.globalCapacity);
+  }
+
+  int slot = vm.globalCount++;
+
+  vm.globalValues[slot] = NIL_VAL;
+  vm.globalDefined[slot] = false;
+
+  tableSet(&vm.globals, key, NUMBER_VAL(slot));
+
+  printf("Created global '%.*s' at slot %d\n",
+         length, name, slot);
+
+  return slot;
+}
+
 void initVM() {
 //> call-reset-stack
   resetStack();
@@ -115,6 +153,11 @@ void initVM() {
 //> Global Variables init-globals
 
   initTable(&vm.globals);
+
+  vm.globalValues = NULL;
+  vm.globalDefined = NULL;
+  vm.globalCount = 0;
+  vm.globalCapacity = 0;
 //< Global Variables init-globals
 //> Hash Tables init-strings
   initTable(&vm.strings);
@@ -136,6 +179,8 @@ void freeVM() {
 //> Global Variables free-globals
   freeTable(&vm.globals);
 //< Global Variables free-globals
+  FREE_ARRAY(Value, vm.globalValues, vm.globalCapacity);
+  FREE_ARRAY(bool, vm.globalDefined, vm.globalCapacity);
 //> Hash Tables free-strings
   freeTable(&vm.strings);
 //< Hash Tables free-strings
@@ -522,32 +567,37 @@ static InterpretResult run() {
 //< Local Variables interpret-set-local
 //> Global Variables interpret-get-global
       case OP_GET_GLOBAL: {
-        ObjString* name = READ_STRING();
-        Value value;
-        if (!tableGet(&vm.globals, name, &value)) {
-          runtimeError("Undefined variable '%s'.", name->chars);
+        uint8_t slot = READ_BYTE();
+
+        if (!vm.globalDefined[slot]) {
+          runtimeError("Undefined variable.");
           return INTERPRET_RUNTIME_ERROR;
         }
-        push(value);
+
+        push(vm.globalValues[slot]);
         break;
       }
 //< Global Variables interpret-get-global
 //> Global Variables interpret-define-global
       case OP_DEFINE_GLOBAL: {
-        ObjString* name = READ_STRING();
-        tableSet(&vm.globals, name, peek(0));
+        uint8_t slot = READ_BYTE();
+
+        vm.globalValues[slot] = peek(0);
+        vm.globalDefined[slot] = true;
         pop();
         break;
       }
 //< Global Variables interpret-define-global
 //> Global Variables interpret-set-global
       case OP_SET_GLOBAL: {
-        ObjString* name = READ_STRING();
-        if (tableSet(&vm.globals, name, peek(0))) {
-          tableDelete(&vm.globals, name); // [delete]
-          runtimeError("Undefined variable '%s'.", name->chars);
+        uint8_t slot = READ_BYTE();
+
+        if (!vm.globalDefined[slot]) {
+          runtimeError("Undefined variable.");
           return INTERPRET_RUNTIME_ERROR;
         }
+
+        vm.globalValues[slot] = peek(0);
         break;
       }
 //< Global Variables interpret-set-global

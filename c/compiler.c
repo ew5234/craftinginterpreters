@@ -556,7 +556,8 @@ static uint8_t parseVariable(const char* errorMessage) {
   if (current->scopeDepth > 0) return 0;
 
 //< Local Variables parse-local
-  return identifierConstant(&parser.previous);
+  return getGlobalSlot(parser.previous.start,
+                     parser.previous.length);
 }
 //< Global Variables parse-variable
 //> Local Variables mark-initialized
@@ -750,7 +751,7 @@ static void namedVariable(Token name, bool canAssign) {
     setOp = OP_SET_UPVALUE;
 //< Closures named-variable-upvalue
   } else {
-    arg = identifierConstant(&name);
+    arg = getGlobalSlot(name.start, name.length);
     getOp = OP_GET_GLOBAL;
     setOp = OP_SET_GLOBAL;
   }
