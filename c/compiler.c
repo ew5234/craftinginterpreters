@@ -412,6 +412,23 @@ static void parsePrecedence(Precedence precedence);
 //< Compiling Expressions forward-declarations
 //> Global Variables identifier-constant
 static uint8_t identifierConstant(Token* name) {
+  Chunk* chunk = currentChunk();
+
+  for (int i = 0; i < chunk->constants.count; i++) {
+    Value value = chunk->constants.values[i];
+
+    if (!IS_STRING(value)) continue;
+
+    ObjString* string = AS_STRING(value);
+
+    if (string->length == name->length &&
+        memcmp(string->chars, name->start, name->length) == 0) {
+      printf("Reusing '%.*s' at index %d\n",
+             name->length, name->start, i);
+      return (uint8_t)i;
+    }
+  }
+
   return makeConstant(OBJ_VAL(copyString(name->start,
                                          name->length)));
 }
