@@ -72,6 +72,7 @@ typedef struct {
 //> Closures is-captured-field
   bool isCaptured;
 //< Closures is-captured-field
+  bool isConst;
 } Local;
 //< Local Variables local-struct
 //> Closures upvalue-struct
@@ -524,6 +525,7 @@ static void addLocal(Token name) {
 //> Closures init-is-captured
   local->isCaptured = false;
 //< Closures init-is-captured
+  local->isConst = false;
 }
 //< Local Variables add-local
 //> Local Variables declare-variable
@@ -742,9 +744,11 @@ static void namedVariable(Token name, bool canAssign) {
 //> Local Variables named-local
   uint8_t getOp, setOp;
   int arg = resolveLocal(current, &name);
+  bool isConst = false;
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
+    isConst = current->locals[arg].isConst;
 //> Closures named-variable-upvalue
   } else if ((arg = resolveUpvalue(current, &name)) != -1) {
     getOp = OP_GET_UPVALUE;
@@ -766,20 +770,23 @@ static void namedVariable(Token name, bool canAssign) {
 */
 //> named-variable-can-assign
   if (canAssign && match(TOKEN_EQUAL)) {
+    if (isConst) {
+      error("Can't assign to a constant variable.");
+    }
 //< named-variable-can-assign
     expression();
 /* Global Variables named-variable < Local Variables emit-set
     emitBytes(OP_SET_GLOBAL, arg);
 */
 //> Local Variables emit-set
-    emitBytes(setOp, (uint8_t)arg);
+    emitBytes(OP_SET_LOCAL, arg);
 //< Local Variables emit-set
   } else {
 /* Global Variables named-variable < Local Variables emit-get
     emitBytes(OP_GET_GLOBAL, arg);
 */
 //> Local Variables emit-get
-    emitBytes(getOp, (uint8_t)arg);
+    emitBytes(OP_GET_LOCAL, arg);
 //< Local Variables emit-get
   }
 //< named-variable
@@ -1204,6 +1211,21 @@ static void funDeclaration() {
   defineVariable(global);
 }
 //< Calls and Functions fun-declaration
+
+ static void constDeclaration() {
+  uint8_t global = parseVariable("Expect variable name.");
+
+  if (current->scopeDepth > 0) {
+    current->locals[current->localCount - 1].isConst = true;
+  }
+  
+  consume(TOKEN_EQUAL, "Expect '=' after constant variable name.");
+  expression();
+  consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+
+  defineVariable(global);
+ }
+
 //> Global Variables var-declaration
 static void varDeclaration() {
   uint8_t global = parseVariable("Expect variable name.");
@@ -1416,6 +1438,8 @@ static void declaration() {
 //< Calls and Functions match-fun
 //> match-var
     varDeclaration();
+  } else if (match(TOKEN_CONST)) {
+    constDeclaration();
   } else {
     statement();
   }
