@@ -77,7 +77,7 @@ typedef struct {
 //< Local Variables local-struct
 //> Closures upvalue-struct
 typedef struct {
-  uint8_t index;
+  uint16_t index;
   bool isLocal;
 } Upvalue;
 //< Closures upvalue-struct
@@ -107,8 +107,9 @@ typedef struct Compiler {
   FunctionType type;
 
 //< Calls and Functions function-fields
-  Local locals[UINT8_COUNT];
+  Local* locals;
   int localCount;
+  int localCapacity;
 //> Closures upvalues-array
   Upvalue upvalues[UINT8_COUNT];
 //< Closures upvalues-array
@@ -227,6 +228,10 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 //< Compiling Expressions emit-bytes
+static void emitShort(uint16_t value) {
+  emitByte((value>>8)& 0xff);
+  emitByte(value & 0xff);
+}
 //> Jumping Back and Forth emit-loop
 static void emitLoop(int loopStart) {
   emitByte(OP_LOOP);
@@ -253,7 +258,8 @@ static void emitReturn() {
 */
 //> Methods and Initializers return-this
   if (current->type == TYPE_INITIALIZER) {
-    emitBytes(OP_GET_LOCAL, 0);
+    emitByte(OP_GET_LOCAL);
+    emitShort(0);
   } else {
     emitByte(OP_NIL);
   }
@@ -263,14 +269,14 @@ static void emitReturn() {
 }
 //< Compiling Expressions emit-return
 //> Compiling Expressions make-constant
-static uint8_t makeConstant(Value value) {
+static uint16_t makeConstant(Value value) {
   int constant = addConstant(currentChunk(), value);
   if (constant > UINT8_MAX) {
     error("Too many constants in one chunk.");
     return 0;
   }
 
-  return (uint8_t)constant;
+  return (uint16_t)constant;
 }
 //< Compiling Expressions make-constant
 //> Compiling Expressions emit-constant
@@ -310,6 +316,9 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
 //< Calls and Functions init-function
   current = compiler;
 //> Calls and Functions init-function-name
+  current->localCount = 0;
+  current->localCapacity = 256;
+  current->locals = malloc(sizeof(Local)* current->localCapacity);
   if (type != TYPE_SCRIPT) {
     current->function->name = copyString(parser.previous.start,
                                          parser.previous.length);
@@ -365,6 +374,7 @@ static ObjFunction* endCompiler() {
 //< dump-chunk
 //> Calls and Functions return-function
 
+  free(current->locals);
 //> restore-enclosing
   current = current->enclosing;
 //< restore-enclosing
@@ -458,7 +468,7 @@ static int resolveLocal(Compiler* compiler, Token* name) {
 }
 //< Local Variables resolve-local
 //> Closures add-upvalue
-static int addUpvalue(Compiler* compiler, uint8_t index,
+static int addUpvalue(Compiler* compiler, uint16_t index,
                       bool isLocal) {
   int upvalueCount = compiler->function->upvalueCount;
 //> existing-upvalue
@@ -492,13 +502,13 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
 //> mark-local-captured
     compiler->enclosing->locals[local].isCaptured = true;
 //< mark-local-captured
-    return addUpvalue(compiler, (uint8_t)local, true);
+    return addUpvalue(compiler, local, true);
   }
 
 //> resolve-upvalue-recurse
   int upvalue = resolveUpvalue(compiler->enclosing, name);
   if (upvalue != -1) {
-    return addUpvalue(compiler, (uint8_t)upvalue, false);
+    return addUpvalue(compiler, upvalue, false);
   }
   
 //< resolve-upvalue-recurse
@@ -508,9 +518,21 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
 //> Local Variables add-local
 static void addLocal(Token name) {
 //> too-many-locals
-  if (current->localCount == UINT8_COUNT) {
-    error("Too many local variables in function.");
-    return;
+  if (current->localCount == current->localCapacity) {
+    int oldCapacity = current->localCapacity;
+    current->localCapacity *= 2;
+
+    Local* newLocals = realloc(
+        current->locals,
+        sizeof(Local) * current->localCapacity
+    );
+
+    if (newLocals == NULL) {
+      free(current->locals);
+      exit(1);
+    }
+
+    current->locals = newLocals;
   }
 
 //< too-many-locals
@@ -768,28 +790,27 @@ static void namedVariable(Token name, bool canAssign) {
 /* Global Variables named-variable < Global Variables named-variable-can-assign
   if (match(TOKEN_EQUAL)) {
 */
-//> named-variable-can-assign
   if (canAssign && match(TOKEN_EQUAL)) {
     if (isConst) {
       error("Can't assign to a constant variable.");
     }
-//< named-variable-can-assign
+
     expression();
-/* Global Variables named-variable < Local Variables emit-set
-    emitBytes(OP_SET_GLOBAL, arg);
-*/
-//> Local Variables emit-set
-    emitBytes(OP_SET_LOCAL, arg);
-//< Local Variables emit-set
+
+    if (getOp == OP_GET_LOCAL) {
+      emitByte(setOp);
+      emitShort((uint16_t)arg);
+    } else {
+      emitBytes(setOp, (uint8_t)arg);
+    }
   } else {
-/* Global Variables named-variable < Local Variables emit-get
-    emitBytes(OP_GET_GLOBAL, arg);
-*/
-//> Local Variables emit-get
-    emitBytes(OP_GET_LOCAL, arg);
-//< Local Variables emit-get
+    if (getOp == OP_GET_LOCAL) {
+      emitByte(getOp);
+      emitShort((uint16_t)arg);
+    } else {
+      emitBytes(getOp, (uint8_t)arg);
+    }
   }
-//< named-variable
 }
 //< Global Variables read-named-variable
 /* Global Variables variable-without-assign < Global Variables variable
@@ -1218,7 +1239,7 @@ static void funDeclaration() {
   if (current->scopeDepth > 0) {
     current->locals[current->localCount - 1].isConst = true;
   }
-  
+
   consume(TOKEN_EQUAL, "Expect '=' after constant variable name.");
   expression();
   consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
