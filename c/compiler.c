@@ -95,6 +95,8 @@ typedef enum {
 //< Calls and Functions function-type-enum
 //> Local Variables compiler-struct
 
+typedef struct Loop Loop;
+
 /* Local Variables compiler-struct < Calls and Functions enclosing-field
 typedef struct {
 */
@@ -114,6 +116,8 @@ typedef struct Compiler {
   Upvalue upvalues[UINT8_COUNT];
 //< Closures upvalues-array
   int scopeDepth;
+
+  Loop* currentLoop;
 } Compiler;
 //< Local Variables compiler-struct
 
@@ -122,6 +126,12 @@ typedef struct {
   int count;
   int capacity;
 } JumpList;
+
+struct Loop {
+  Loop* enclosing;
+  int loopStart;
+  int scopeDepth;
+};
 
 //> Methods and Initializers class-compiler-struct
 
@@ -328,6 +338,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
 //< Calls and Functions init-compiler
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  compiler->currentLoop = NULL;
 //> Calls and Functions init-function
   compiler->function = newFunction();
 //< Calls and Functions init-function
@@ -427,6 +438,23 @@ static void endScope() {
 //< pop-locals
 }
 //< Local Variables end-scope
+
+static void emitLoopCleanup(Loop* loop) {
+  for (int i = current->localCount - 1; i >= 0; i--) {
+    Local* local = &current->locals[i];
+
+    if (local->depth <= loop->scopeDepth) {
+      break;
+    }
+
+    if (local->isCaptured) {
+      emitByte(OP_CLOSE_UPVALUE);
+    } else {
+      emitByte(OP_POP);
+    }
+  }
+}
+
 //> Compiling Expressions forward-declarations
 
 static void expression();
@@ -1339,7 +1367,16 @@ static void forStatement() {
   }
 //< for-increment
 
+  Loop loop;
+  loop.enclosing = current->currentLoop;
+  loop.loopStart = loopStart;
+  loop.scopeDepth = current->scopeDepth;
+  current->currentLoop = &loop;
+
   statement();
+
+  current->currentLoop = loop.enclosing;
+
   emitLoop(loopStart);
 //> exit-jump
 
@@ -1424,7 +1461,16 @@ static void whileStatement() {
 
   int exitJump = emitJump(OP_JUMP_IF_FALSE);
   emitByte(OP_POP);
+
+  Loop loop;
+  loop.enclosing = current->currentLoop;
+  loop.loopStart = loopStart;
+  loop.scopeDepth = current->scopeDepth;
+  current->currentLoop = &loop;
+
   statement();
+
+  current->currentLoop = loop.enclosing;
 //> loop
   emitLoop(loopStart);
 //< loop
@@ -1501,6 +1547,20 @@ static void switchStatement() {
   FREE_ARRAY(int, endJumps.jumps, endJumps.capacity);
 
   endScope();
+}
+
+static void continueStatement() {
+  consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+
+  if (current->currentLoop == NULL) {
+    error("Can't use 'continue' outside of a loop.");
+    return;
+  }
+
+  Loop* loop = current->currentLoop;
+
+  emitLoopCleanup(loop);
+  emitLoop(loop->loopStart);
 }
 
 //> Global Variables synchronize
@@ -1586,7 +1646,11 @@ static void statement() {
 //> Local Variables parse-block
   } else if (match(TOKEN_SWITCH)) {
     switchStatement();
-  } else if (match(TOKEN_LEFT_BRACE)) {
+  } else if (match(TOKEN_CONTINUE)) {
+    continueStatement();
+  }
+  
+  else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();
     endScope();
