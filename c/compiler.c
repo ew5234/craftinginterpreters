@@ -1563,6 +1563,29 @@ static void continueStatement() {
   emitLoop(loop->loopStart);
 }
 
+static void unlessStatement() {
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'unless'.");
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+  int thenJump = emitJump(OP_JUMP_IF_FALSE);
+  int elseJump = emitJump(OP_JUMP);
+
+  patchJump(thenJump);
+  emitByte(OP_POP);
+
+  statement();
+
+  int endJump = emitJump(OP_JUMP);
+
+  patchJump(elseJump);
+  emitByte(OP_POP);
+
+  if (match(TOKEN_ELSE)) statement();
+
+  patchJump(endJump);
+}
+
 //> Global Variables synchronize
 static void synchronize() {
   parser.panicMode = false;
@@ -1648,9 +1671,9 @@ static void statement() {
     switchStatement();
   } else if (match(TOKEN_CONTINUE)) {
     continueStatement();
-  }
-  
-  else if (match(TOKEN_LEFT_BRACE)) {
+  } else if (match(TOKEN_UNLESS)) {
+    unlessStatement();
+  } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();
     endScope();
