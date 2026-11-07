@@ -116,6 +116,13 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 //< Local Variables compiler-struct
+
+typedef struct {
+  int* jumps;
+  int count;
+  int capacity;
+} JumpList;
+
 //> Methods and Initializers class-compiler-struct
 
 typedef struct ClassCompiler {
@@ -297,6 +304,16 @@ static void patchJump(int offset) {
   currentChunk()->code[offset + 1] = jump & 0xff;
 }
 //< Jumping Back and Forth patch-jump
+
+static void addJump(JumpList* list, int jump) {
+  if (list->capacity < list->count + 1) {
+    int oldCapacity = list->capacity;
+    list->capacity = GROW_CAPACITY(oldCapacity);
+
+    list->jumps = GROW_ARRAY(int, list->jumps, oldCapacity, list->capacity);
+  }
+}
+
 //> Local Variables init-compiler
 /* Local Variables init-compiler < Calls and Functions init-compiler
 static void initCompiler(Compiler* compiler) {
@@ -416,6 +433,7 @@ static void expression();
 //> Global Variables forward-declarations
 static void statement();
 static void declaration();
+static void switchStatement();
 //< Global Variables forward-declarations
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
@@ -1415,6 +1433,76 @@ static void whileStatement() {
   emitByte(OP_POP);
 }
 //< Jumping Back and Forth while-statement
+
+static void switchStatement() {
+  beginScope();
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'switch'.");
+
+  expression();
+
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'switch'.");
+
+  Token switchToken;
+  switchToken.start = "";
+  switchToken.length = 0;
+  switchToken.line = parser.previous.line;
+  switchToken.type = TOKEN_IDENTIFIER;
+
+  int switchSlot = current->localCount;
+
+  addLocal(switchToken);
+  markInitialized();
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before switch cases.");
+  JumpList endJumps = {NULL, 0,0};
+
+  while (match(TOKEN_CASE)) {
+    emitByte(OP_GET_LOCAL);
+    emitShort((uint16_t)switchSlot);
+
+    expression();
+
+    consume(TOKEN_COLON, "Expect ':' after case expression.");
+
+    emitByte(OP_EQUAL);
+
+    int falseJump = emitJump(OP_JUMP_IF_FALSE);
+
+    emitByte(OP_POP);
+
+    while (!check(TOKEN_CASE) &&
+        !check(TOKEN_DEFAULT) &&
+        !check(TOKEN_RIGHT_BRACE) &&
+        !check(TOKEN_EOF)) {
+      statement();
+    }
+
+    addJump(&endJumps, emitJump(OP_JUMP));
+    patchJump(falseJump);
+    emitByte(OP_POP);
+  }
+
+  if (match(TOKEN_DEFAULT)) {
+    consume(TOKEN_COLON, "Expect ':' after 'default'.");
+
+    while (!check(TOKEN_RIGHT_BRACE) &&
+           !check(TOKEN_EOF)) {
+      statement();
+    }
+  }
+
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after switch statement.");
+
+  for (int i = 0; i < endJumps.count; i++) {
+    patchJump(endJumps.jumps[i]);
+  }
+
+  FREE_ARRAY(int, endJumps.jumps, endJumps.capacity);
+
+  endScope();
+}
+
 //> Global Variables synchronize
 static void synchronize() {
   parser.panicMode = false;
@@ -1429,6 +1517,7 @@ static void synchronize() {
       case TOKEN_IF:
       case TOKEN_WHILE:
       case TOKEN_PRINT:
+      case TOKEN_SWITCH:
       case TOKEN_RETURN:
         return;
 
@@ -1495,6 +1584,8 @@ static void statement() {
     whileStatement();
 //< Jumping Back and Forth parse-while
 //> Local Variables parse-block
+  } else if (match(TOKEN_SWITCH)) {
+    switchStatement();
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();
