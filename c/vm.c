@@ -10,6 +10,8 @@
 //> Calls and Functions vm-include-time
 #include <time.h>
 //< Calls and Functions vm-include-time
+#include <math.h>
+
 
 //< vm-include-stdio
 #include "common.h"
@@ -27,10 +29,25 @@
 
 VM vm; // [one]
 //> Calls and Functions clock-native
-static Value clockNative(int argCount, Value* args) {
-  return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+static bool clockNative(int argCount, Value* args, Value* result) {
+  *result = NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+  return true;
 }
 //< Calls and Functions clock-native
+static bool sqrtNative(int argCount, Value* args, Value* result) {
+  if (!IS_NUMBER(args[0])) {
+    return false;
+  }
+
+  double number = AS_NUMBER(args[0]);
+
+  if (number < 0) {
+    return false;
+  }
+
+  *result = NUMBER_VAL(sqrt(number));
+  return true;
+}
 //> reset-stack
 static void resetStack() {
   vm.stackTop = vm.stack;
@@ -180,6 +197,7 @@ void initVM() {
 
   defineNative("clock", 0, clockNative);
 //< Calls and Functions define-native-clock
+  defineNative("sqrt", 1, sqrtNative);
 }
 
 void freeVM() {
@@ -307,7 +325,11 @@ static bool callValue(Value callee, int argCount) {
           return false;
         }
 
-        Value result = native->function(argCount, vm.stackTop - argCount);
+        Value result;
+        if (!native->function(argCount, vm.stackTop - argCount, &result)){
+          runtimeError("Native function failed. ");
+          return false;
+        }
         vm.stackTop -= argCount + 1;
         push(result);
         return true;
