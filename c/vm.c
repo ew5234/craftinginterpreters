@@ -440,11 +440,12 @@ static void concatenate() {
 static InterpretResult run() {
 //> Calls and Functions run
   CallFrame* frame = &vm.frames[vm.frameCount - 1];
+  register uint8_t* ip = frame->ip; 
 
 /* A Virtual Machine run < Calls and Functions run
 #define READ_BYTE() (*vm.ip++)
 */
-#define READ_BYTE() (*frame->ip++)
+#define READ_BYTE() (*ip++)
 /* A Virtual Machine read-constant < Calls and Functions run
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 */
@@ -454,8 +455,8 @@ static InterpretResult run() {
     (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
 */
 #define READ_SHORT() \
-    (frame->ip += 2, \
-    (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+    (ip += 2, \
+    (uint16_t)((ip[-2] << 8) | ip[-1]))
 
 /* Calls and Functions run < Closures read-constant
 #define READ_CONSTANT() \
@@ -491,6 +492,8 @@ static InterpretResult run() {
     } while (false)
 //< Types of Values binary-op
 
+
+
   for (;;) {
 //> trace-execution
 #ifdef DEBUG_TRACE_EXECUTION
@@ -513,7 +516,7 @@ static InterpretResult run() {
 */
 //> Closures disassemble-instruction
     disassembleInstruction(&frame->closure->function->chunk,
-        (int)(frame->ip - frame->closure->function->chunk.code));
+        (int)(ip - frame->closure->function->chunk.code));
 //< Closures disassemble-instruction
 #endif
 
@@ -749,7 +752,7 @@ static InterpretResult run() {
         vm.ip += offset;
 */
 //> Calls and Functions jump
-        frame->ip += offset;
+        ip += offset;
 //< Calls and Functions jump
         break;
       }
@@ -761,7 +764,7 @@ static InterpretResult run() {
         if (isFalsey(peek(0))) vm.ip += offset;
 */
 //> Calls and Functions jump-if-false
-        if (isFalsey(peek(0))) frame->ip += offset;
+        if (isFalsey(peek(0))) ip += offset;
 //< Calls and Functions jump-if-false
         break;
       }
@@ -773,7 +776,7 @@ static InterpretResult run() {
         vm.ip -= offset;
 */
 //> Calls and Functions loop
-        frame->ip -= offset;
+        ip -= offset;
 //< Calls and Functions loop
         break;
       }
@@ -781,12 +784,16 @@ static InterpretResult run() {
 //> Calls and Functions interpret-call
       case OP_CALL: {
         int argCount = READ_BYTE();
+
+        frame->ip = ip;
+
         if (!callValue(peek(argCount), argCount)) {
           return INTERPRET_RUNTIME_ERROR;
         }
 //> update-frame-after-call
         frame = &vm.frames[vm.frameCount - 1];
 //< update-frame-after-call
+        ip = frame->ip;
         break;
       }
 //< Calls and Functions interpret-call
@@ -794,10 +801,13 @@ static InterpretResult run() {
       case OP_INVOKE: {
         ObjString* method = READ_STRING();
         int argCount = READ_BYTE();
+
+        frame->ip = ip;
         if (!invoke(method, argCount)) {
           return INTERPRET_RUNTIME_ERROR;
         }
         frame = &vm.frames[vm.frameCount - 1];
+        ip = frame->ip;
         break;
       }
 //< Methods and Initializers interpret-invoke
@@ -806,10 +816,14 @@ static InterpretResult run() {
         ObjString* method = READ_STRING();
         int argCount = READ_BYTE();
         ObjClass* superclass = AS_CLASS(pop());
+
+        frame->ip = ip;
+
         if (!invokeFromClass(superclass, method, argCount)) {
           return INTERPRET_RUNTIME_ERROR;
         }
         frame = &vm.frames[vm.frameCount - 1];
+        ip = frame->ip;
         break;
       }
 //< Superclasses interpret-super-invoke
@@ -864,6 +878,7 @@ static InterpretResult run() {
         vm.stackTop = frame->slots;
         push(result);
         frame = &vm.frames[vm.frameCount - 1];
+        ip = frame->ip;
         break;
 //< Calls and Functions interpret-return
       }
