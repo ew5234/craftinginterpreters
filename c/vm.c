@@ -48,6 +48,18 @@ static bool sqrtNative(int argCount, Value* args, Value* result) {
   *result = NUMBER_VAL(sqrt(number));
   return true;
 }
+
+static bool powerNative(int argCount, Value* args, Value* result) {
+  if(!IS_NUMBER(args[0]) || !IS_NUMBER(args[1])) {
+    return false;
+  }
+  
+  double base = AS_NUMBER(args[0]);
+  double exponent = AS_NUMBER(args[1]);
+
+  *result = NUMBER_VAL(pow(base, exponent));
+  return true;
+}
 //> reset-stack
 static void resetStack() {
   vm.stackTop = vm.stack;
@@ -198,6 +210,7 @@ void initVM() {
   defineNative("clock", 0, clockNative);
 //< Calls and Functions define-native-clock
   defineNative("sqrt", 1, sqrtNative);
+  defineNative("pow", 2, powerNative);
 }
 
 void freeVM() {
