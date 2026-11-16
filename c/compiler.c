@@ -480,8 +480,6 @@ static uint8_t identifierConstant(Token* name) {
 
     if (string->length == name->length &&
         memcmp(string->chars, name->start, name->length) == 0) {
-      printf("Reusing '%.*s' at index %d\n",
-             name->length, name->start, i);
       return (uint8_t)i;
     }
   }
@@ -1158,19 +1156,17 @@ static void function(FunctionType type) {
   block();
 
   ObjFunction* function = endCompiler();
-/* Calls and Functions compile-function < Closures emit-closure
-  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
-*/
-//> Closures emit-closure
-  emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
-//< Closures emit-closure
-//> Closures capture-upvalues
 
-  for (int i = 0; i < function->upvalueCount; i++) {
-    emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
-    emitByte(compiler.upvalues[i].index);
+  if (function->upvalueCount > 0) {
+    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
+
+    for (int i = 0; i < function->upvalueCount; i++) {
+      emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
+      emitByte(compiler.upvalues[i].index);
+    }
+  } else {
+    emitConstant(OBJ_VAL(function));
   }
-//< Closures capture-upvalues
 }
 //< Calls and Functions compile-function
 //> Methods and Initializers method

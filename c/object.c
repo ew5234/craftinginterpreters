@@ -39,7 +39,7 @@ static Obj* allocateObject(size_t size, ObjType type) {
 //< allocate-object
 //> Methods and Initializers new-bound-method
 ObjBoundMethod* newBoundMethod(Value receiver,
-                               ObjClosure* method) {
+                               Value method) {
   ObjBoundMethod* bound = ALLOCATE_OBJ(ObjBoundMethod,
                                        OBJ_BOUND_METHOD);
   bound->receiver = receiver;
@@ -212,7 +212,13 @@ void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
 //> Methods and Initializers print-bound-method
     case OBJ_BOUND_METHOD:
-      printFunction(AS_BOUND_METHOD(value)->method->function);
+      Value method = AS_BOUND_METHOD(value)->method;
+
+      if (IS_CLOSURE(method)) {
+        printFunction(AS_CLOSURE(method)->function);
+      } else {
+        printFunction(AS_FUNCTION(method));
+      }
       break;
 //< Methods and Initializers print-bound-method
 //> Classes and Instances print-class
