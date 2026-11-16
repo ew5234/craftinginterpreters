@@ -90,6 +90,7 @@ typedef enum {
 //> Closures close-upvalue-op
   OP_CLOSE_UPVALUE,
 //< Closures close-upvalue-op
+  OP_CLOSER_UPVALUE_KEEP,
   OP_RETURN,
 //> Classes and Instances class-op
   OP_CLASS,

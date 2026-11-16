@@ -217,6 +217,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
     case OP_CLOSE_UPVALUE:
       return simpleInstruction("OP_CLOSE_UPVALUE", offset);
 //< Closures disassemble-close-upvalue
+    case OP_CLOSER_UPVALUE_KEEP:
+      return simpleInstruction("OP_CLOSE_UPVALUE_KEEP", offset);
     case OP_RETURN:
       return simpleInstruction("OP_RETURN", offset);
 //> Classes and Instances disassemble-class

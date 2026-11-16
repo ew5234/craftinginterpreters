@@ -1320,11 +1320,13 @@ static void forStatement() {
 /* Jumping Back and Forth for-statement < Jumping Back and Forth for-initializer
   consume(TOKEN_SEMICOLON, "Expect ';'.");
 */
+  bool loopVar = false;
 //> for-initializer
   if (match(TOKEN_SEMICOLON)) {
     // No initializer.
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
+    loopVar = true;
   } else {
     expressionStatement();
   }
@@ -1353,6 +1355,9 @@ static void forStatement() {
   if (!match(TOKEN_RIGHT_PAREN)) {
     int bodyJump = emitJump(OP_JUMP);
     int incrementStart = currentChunk()->count;
+
+
+
     expression();
     emitByte(OP_POP);
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
@@ -1371,7 +1376,9 @@ static void forStatement() {
 
   statement();
 
-  current->currentLoop = loop.enclosing;
+  if (loopVar) {
+    emitByte(OP_CLOSER_UPVALUE_KEEP);
+  }
 
   emitLoop(loopStart);
 //> exit-jump

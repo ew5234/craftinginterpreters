@@ -889,6 +889,9 @@ static InterpretResult run() {
         pop();
         break;
 //< Closures interpret-close-upvalue
+      case OP_CLOSER_UPVALUE_KEEP:
+        closeUpvalues(vm.stackTop -1);
+        break;
       case OP_RETURN: {
 /* A Virtual Machine print-return < Global Variables op-return
         printValue(pop());
